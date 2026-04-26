@@ -7,6 +7,7 @@ import "redirected"
 import "space_turn"
 import "snap_turn"
 import "view_ratchet"
+import "locked_reorientation"
 
 
 MyStackViewPage {
@@ -30,6 +31,10 @@ MyStackViewPage {
 
         SnapTurnGroupBox{
             id: snapTurnGroupBox
+        }
+
+        LockedReorientationGroupBox{
+            id: lockedReorientationGroupBox
         }
 
 

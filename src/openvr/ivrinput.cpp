@@ -133,6 +133,7 @@ SteamIVRInput::SteamIVRInput()
       m_smoothTurnLeft( action_keys::smoothTurnLeft ),
       m_smoothTurnRight( action_keys::smoothTurnRight ),
       m_autoTurnToggle( action_keys::autoTurnToggle ),
+      m_lockedReorientation( action_keys::lockedReorientation ),
       m_xAxisLockToggle( action_keys::xAxisLockToggle ),
       m_yAxisLockToggle( action_keys::yAxisLockToggle ),
       m_zAxisLockToggle( action_keys::zAxisLockToggle ),
@@ -305,6 +306,11 @@ bool SteamIVRInput::smoothTurnRight()
 bool SteamIVRInput::autoTurnToggle()
 {
     return isDigitalActionActivatedOnce( m_autoTurnToggle );
+}
+
+bool SteamIVRInput::lockedReorientation()
+{
+    return isDigitalActionActivatedConstant( m_lockedReorientation );
 }
 
 bool SteamIVRInput::xAxisLockToggle()

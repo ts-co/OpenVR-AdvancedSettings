@@ -92,6 +92,9 @@ class RotationTabController : public QObject
     Q_PROPERTY(
         bool autoTurnShowNotification READ autoTurnShowNotification WRITE
             setAutoTurnShowNotification NOTIFY autoTurnShowNotificationChanged )
+    Q_PROPERTY( bool lockedReorientationEnabled READ lockedReorientationEnabled
+                    WRITE setLockedReorientationEnabled NOTIFY
+                        lockedReorientationEnabledChanged )
 
 private:
     OverlayController* parent;
@@ -122,6 +125,17 @@ private:
         m_autoTurnNotificationTimestamp;
 
     bool m_isHMDActive = false;
+
+    static constexpr float k_lockedReorientationFadeSeconds = 0.15f;
+
+    bool m_lockedReorientationActive = false;
+    bool m_lockedReorientationLastInput = false;
+    double m_lockedReorientationInitialYaw = 0.0;
+    int m_lockedReorientationInitialRotation = 0;
+
+    void enterLockedReorientation( vr::TrackedDevicePose_t* devicePoses );
+    void exitLockedReorientation( vr::TrackedDevicePose_t* devicePoses );
+    void updateLockedReorientation( vr::TrackedDevicePose_t* devicePoses );
 
     void doAutoTurn(
         const vr::TrackedDevicePose_t& poseHmd,
@@ -155,6 +169,11 @@ public:
     double vestibularMotionRadius() const;
     bool viewRatchettingEnabled() const;
     double viewRatchettingPercent() const;
+    bool lockedReorientationEnabled() const;
+    bool isLockedReorientationActive() const
+    {
+        return m_lockedReorientationActive;
+    }
 
 public slots:
     void setAutoTurnEnabled( bool value, bool notify = true );
@@ -170,6 +189,8 @@ public slots:
     void setVestibularMotionRadius( double value, bool notify = true );
     void setViewRatchettingEnabled( bool value, bool notify = true );
     void setViewRatchettingPercent( double value, bool notify = true );
+    void setLockedReorientationEnabled( bool value, bool notify = true );
+    void setLockedReorientationInputState( bool value );
 
 signals:
 
@@ -187,6 +208,7 @@ signals:
     void vestibularMotionRadiusChanged( double value );
     void viewRatchettingEnabledChanged( bool value );
     void viewRatchettingPercentChanged( double value );
+    void lockedReorientationEnabledChanged( bool value );
 };
 
 // Would be nice to do <typename T, T min, T max> but the standard doesn't allow
