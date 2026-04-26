@@ -79,6 +79,8 @@ void RotationTabController::eventLoopTick(
 {
     if ( devicePoses )
     {
+        updateLockedReorientation( devicePoses );
+
         m_isHMDActive = false;
         std::lock_guard<std::recursive_mutex> lock(
             parent->chaperoneUtils().mutex() );
@@ -95,7 +97,8 @@ void RotationTabController::eventLoopTick(
             m_isHMDActive = true;
         }
         if ( poseHmd.bPoseIsValid && poseHmd.bDeviceIsConnected
-             && poseHmd.eTrackingResult == vr::TrackingResult_Running_OK )
+             && poseHmd.eTrackingResult == vr::TrackingResult_Running_OK
+             && !m_lockedReorientationActive )
         {
             auto chaperoneDistances
                 = parent->chaperoneUtils().getDistancesToChaperone(
@@ -816,6 +819,118 @@ void RotationTabController::setViewRatchettingPercent( double value,
     {
         emit viewRatchettingPercentChanged( value );
     }
+}
+
+bool RotationTabController::lockedReorientationEnabled() const
+{
+    return settings::getSetting(
+        settings::BoolSetting::ROTATION_lockedReorientationEnabled );
+}
+
+void RotationTabController::setLockedReorientationEnabled( bool value,
+                                                           bool notify )
+{
+    settings::setSetting(
+        settings::BoolSetting::ROTATION_lockedReorientationEnabled, value );
+
+    if ( !value && m_lockedReorientationActive )
+    {
+        // Kill switch flipped while active: exit immediately so the user is
+        // never left faded to black. Fetch fresh poses on demand so the
+        // rotation correction still lands correctly.
+        vr::TrackedDevicePose_t poses[vr::k_unMaxTrackedDeviceCount];
+        vr::VRSystem()->GetDeviceToAbsoluteTrackingPose(
+            vr::TrackingUniverseStanding,
+            0.0f,
+            poses,
+            vr::k_unMaxTrackedDeviceCount );
+        exitLockedReorientation( poses );
+        m_lockedReorientationLastInput = false;
+    }
+
+    if ( notify )
+    {
+        emit lockedReorientationEnabledChanged( value );
+    }
+}
+
+void RotationTabController::setLockedReorientationInputState( bool value )
+{
+    m_lockedReorientationLastInput = value;
+}
+
+void RotationTabController::updateLockedReorientation(
+    vr::TrackedDevicePose_t* devicePoses )
+{
+    const bool enabled = lockedReorientationEnabled();
+    const bool desiredActive = enabled && m_lockedReorientationLastInput;
+
+    if ( desiredActive && !m_lockedReorientationActive )
+    {
+        enterLockedReorientation( devicePoses );
+    }
+    else if ( !desiredActive && m_lockedReorientationActive )
+    {
+        exitLockedReorientation( devicePoses );
+    }
+}
+
+void RotationTabController::enterLockedReorientation(
+    vr::TrackedDevicePose_t* devicePoses )
+{
+    auto& poseHmd = devicePoses[vr::k_unTrackedDeviceIndex_Hmd];
+    if ( !poseHmd.bPoseIsValid || !poseHmd.bDeviceIsConnected
+         || poseHmd.eTrackingResult != vr::TrackingResult_Running_OK )
+    {
+        LOG( WARNING ) << "Locked Reorientation: skipping entry, invalid HMD "
+                          "pose.";
+        return;
+    }
+
+    m_lockedReorientationInitialYaw = quaternion::getYaw(
+        quaternion::fromHmdMatrix34( poseHmd.mDeviceToAbsoluteTracking ) );
+    m_lockedReorientationInitialRotation
+        = parent->m_moveCenterTabController.rotation();
+
+    if ( vr::VRCompositor() )
+    {
+        vr::VRCompositor()->FadeToColor(
+            k_lockedReorientationFadeSeconds, 0.f, 0.f, 0.f, 1.f, false );
+    }
+
+    m_lockedReorientationActive = true;
+}
+
+void RotationTabController::exitLockedReorientation(
+    vr::TrackedDevicePose_t* devicePoses )
+{
+    if ( vr::VRCompositor() )
+    {
+        vr::VRCompositor()->FadeToColor(
+            k_lockedReorientationFadeSeconds, 0.f, 0.f, 0.f, 0.f, false );
+    }
+
+    auto& poseHmd = devicePoses[vr::k_unTrackedDeviceIndex_Hmd];
+    if ( poseHmd.bPoseIsValid && poseHmd.bDeviceIsConnected
+         && poseHmd.eTrackingResult == vr::TrackingResult_Running_OK )
+    {
+        const double finalYaw = quaternion::getYaw(
+            quaternion::fromHmdMatrix34( poseHmd.mDeviceToAbsoluteTracking ) );
+        const double delta = reduceAngle<double>(
+            finalYaw - m_lockedReorientationInitialYaw, -M_PI, M_PI );
+        const int deltaCenti
+            = static_cast<int>( round( delta * k_radiansToCentidegrees ) );
+        const int newCenti = reduceAngle<int>(
+            m_lockedReorientationInitialRotation + deltaCenti, -18000, 18000 );
+        parent->m_moveCenterTabController.setRotation( newCenti );
+    }
+    else
+    {
+        LOG( WARNING ) << "Locked Reorientation: invalid HMD pose at exit, "
+                          "skipping rotation correction.";
+    }
+
+    m_lockedReorientationActive = false;
 }
 
 } // namespace advsettings

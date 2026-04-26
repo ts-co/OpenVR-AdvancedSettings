@@ -66,6 +66,7 @@ enum class BoolSetting
     ROTATION_autoturnVestibularMotionEnabled,
     ROTATION_autoturnViewRatchettingEnabled,
     ROTATION_autoturnShowNotification,
+    ROTATION_lockedReorientationEnabled,
     // LAST_ENUMERATOR must always be set to the last value
     STEAMVR_perappBindEnabled,
     LAST_ENUMERATOR = STEAMVR_perappBindEnabled,

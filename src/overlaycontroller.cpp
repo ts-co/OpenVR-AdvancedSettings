@@ -380,6 +380,11 @@ void OverlayController::exitApp()
 
 void OverlayController::Shutdown()
 {
+    if ( vr::VRCompositor() )
+    {
+        vr::VRCompositor()->FadeToColor( 0.0f, 0.f, 0.f, 0.f, 0.f, false );
+    }
+
     disconnect( &m_pumpEventsTimer,
                 SIGNAL( timeout() ),
                 this,
@@ -799,6 +804,8 @@ void OverlayController::processRotationBindings()
         m_rotationTabController.setAutoTurnEnabled(
             !( m_rotationTabController.autoTurnEnabled() ) );
     }
+    m_rotationTabController.setLockedReorientationInputState(
+        m_actions.lockedReorientation() );
 }
 /*!
 Checks if an action has been activated and dispatches the related action if

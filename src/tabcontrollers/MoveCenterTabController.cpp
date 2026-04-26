@@ -1932,6 +1932,10 @@ void MoveCenterTabController::snapTurnLeft( bool snapTurnLeftJustPressed )
     {
         return;
     }
+    if ( parent->m_rotationTabController.isLockedReorientationActive() )
+    {
+        return;
+    }
 
     int newRotationAngleDeg = m_rotation - snapTurnAngle();
     // Keep angle within -18000 ~ 18000 centidegrees
@@ -1950,6 +1954,10 @@ void MoveCenterTabController::snapTurnLeft( bool snapTurnLeftJustPressed )
 void MoveCenterTabController::snapTurnRight( bool snapTurnRightJustPressed )
 {
     if ( !snapTurnRightJustPressed )
+    {
+        return;
+    }
+    if ( parent->m_rotationTabController.isLockedReorientationActive() )
     {
         return;
     }
@@ -1974,6 +1982,10 @@ void MoveCenterTabController::smoothTurnLeft( bool smoothTurnLeftActive )
     {
         return;
     }
+    if ( parent->m_rotationTabController.isLockedReorientationActive() )
+    {
+        return;
+    }
 
     // Activates every tick. smoothTurnRate() effectively becomes a
     // percentage of a degree per tick. A setting of 100 would equal 90
@@ -1995,6 +2007,10 @@ void MoveCenterTabController::smoothTurnLeft( bool smoothTurnLeftActive )
 void MoveCenterTabController::smoothTurnRight( bool smoothTurnRightActive )
 {
     if ( !smoothTurnRightActive )
+    {
+        return;
+    }
+    if ( parent->m_rotationTabController.isLockedReorientationActive() )
     {
         return;
     }
@@ -2279,6 +2295,15 @@ void MoveCenterTabController::updateHandTurn(
     vr::TrackedDevicePose_t* devicePoses,
     double angle )
 {
+    if ( parent->m_rotationTabController.isLockedReorientationActive() )
+    {
+        // Drop tracking history so the next valid frame doesn't apply a huge
+        // accumulated yaw delta from before the lock began.
+        m_lastHandQuaternion.w = k_quaternionInvalidValue;
+        m_lastRotateHand = m_activeTurnHand;
+        return;
+    }
+
     auto rotateHandId = vr::VRSystem()->GetTrackedDeviceIndexForControllerRole(
         m_activeTurnHand );
 
